@@ -17,11 +17,20 @@ app.get("/", (req, res) => {
 });
 
 
+app.post("/urls/:shortURL/delete", (req, res) => {
+  //Deletes a url from from the list. Done on a POST request (not ideal)
+  //Delete the shortURL entry from the database
+  delete urlDatabase[req.params.shortURL]; //Deltes the short url
+  res.redirect("/urls");
+});
+
 
 app.get("/urls", (req, res) => {
   let templateVars = { urls: urlDatabase };
   res.render("urls_index", templateVars);
 });
+
+
 
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
@@ -40,8 +49,11 @@ app.get("/urls/:shortURL", (req, res) => {
 
 });
 
+
+
+
 app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
+  res.json(302, `/urls/${shortenedURL}`);
 });
 
 app.post("/urls", (req, res) => {
