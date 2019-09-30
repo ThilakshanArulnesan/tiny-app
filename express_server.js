@@ -24,6 +24,15 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
+app.post("/urls/:shortURL", (req, res) => {
+  //Renames a url
+
+  let newURL = req.body.longURL;
+  urlDatabase[req.params.shortURL] = newURL; //Replaces the site
+
+  res.redirect("/urls");
+});
+
 
 app.get("/urls", (req, res) => {
   let templateVars = { urls: urlDatabase };
