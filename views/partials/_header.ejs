@@ -17,21 +17,30 @@
 
 
     <% if (!user || !user.id){ %>
-    <form class="form-inline" action="/login" method="POST">
+    <form class="form-inline" action="/register" method="GET">
       <div class=" form-group mb-2">
-        <label for="longURL" style="color:white">Username:</label>
-        <input class="form-control" type="text" name="username" placeholder="Cookie Monster"
-          style="width: 200px; margin: 1em">
-        <button type="submit" class="btn btn-primary">Sign-in now</button>
-        <% }else{ %>
-        <form class="form-inline" action="/logout" method="POST">
-          <div class=" form-group mb-2">
-            <label style="margin: 1em;color:white">
-              <%= `Logged in as ${user.email}! ` %>
-            </label>
-            <button type="submit" class="btn btn-primary">Logout</button>
-            <% } %>
-          </div>
-        </form>
+        <button type="submit" class="btn btn-primary">Register</button>
+      </div>
+    </form>
+
+    <form class="form-inline" action="/login" method="GET">
+      <div class=" form-group mb-2">
+        <button type="submit" class="btn btn-primary">Login</button>
+      </div>
+    </form>
+
+
+    <% }else{ %>
+    <form class="form-inline" action="/logout" method="POST">
+      <div class=" form-group mb-2">
+        <label style="margin: 1em;color:white">
+          <%= `Logged in as ${user.email}! ` %>
+        </label>
+        <button type="submit" class="btn btn-primary">Logout</button>
+      </div>
+    </form>
+
+    <% } %>
+
   </nav>
 </header>

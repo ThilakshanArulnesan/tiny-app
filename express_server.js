@@ -46,12 +46,14 @@ app.post("/register", (req, res) => {
   let newUser = req.body.email;
   let pswd = req.body.password;
 
-  if (!newUser || !pswd) {
+  if (!newUser || !pswd) { //Checks if the user has supplied a username/pswd combination
     res.status(400).send("Invalid e-mail and/or password");
+    return;
   }
 
-  if (alreadyRegistered(newUser)) {
+  if (alreadyRegistered(newUser)) { //Checks if the user already has created an account
     res.status(400).send("E-mail already registered");
+    return;
   }
   //Adds the new user
   users[newUser] = {};
@@ -65,17 +67,36 @@ app.post("/register", (req, res) => {
 
 });
 
+app.get("/login", (req, res) => {
+
+  let userID = req.cookies["user_id"];
+  let user = findUserById(userID);
+  let templateVars = { user };
+
+  res.render("urls_login", templateVars);
+});
+
 app.post("/login", (req, res) => {
-  //Grab the user by the e-mail
+
+  // Note the requirements called for two different messages for e-mail not found and incorrect password
+  // But it would be better for security if users got the same message whether the user existed or not
+  // and the message should not indicate whether it was the password or the username that failed.
   let user = findUserByEmail(req.body.email);
+  if (!user) {
+    res.status(401).send("User not found.");
+    return;
+  }
+
   let pswdAttempt = req.body.password;
   if (!user || !pswdAttempt) {
-    res.status(400).send("Invalid e-mail and/or password");
+    res.status(401).send("Invalid password/username");
+    return;
   }
 
   if (!passwordCheck(user.password, pswdAttempt)) {
     //Failed password:
-    res.status(400).send("Invalid e-mail and/or password");
+    res.status(401).send("Incorrect password, please try again.");
+    return;
   }
 
   res.cookie("user_id", user.id); //Logs the user in
@@ -83,7 +104,7 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
