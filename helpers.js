@@ -1,3 +1,5 @@
+const bcrypt = require('bcrypt');
+
 
 const getUserByEmail = function(email, database) {
   if (!email) {
@@ -49,7 +51,7 @@ const urlsForUser = function(id, urlDatabase) {
     }
   }
   return retObj;
-}
+};
 
 
 const passwordCheck = function(encrypted, guess) {

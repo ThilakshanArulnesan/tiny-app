@@ -4,7 +4,7 @@ const PORT = 8080; // default port 8080
 const bodyParser = require(`body-parser`);
 //const cookieParser = require('cookie-parser'); //No longer required
 const bcrypt = require('bcrypt');
-var cookieSession = require('cookie-session')
+const cookieSession = require('cookie-session');
 const { getUserByEmail, generateRandomString, alreadyRegistered, urlsForUser, passwordCheck, findUserById } = require('./helpers');
 
 app.set("view engine", "ejs");
@@ -67,7 +67,7 @@ app.get("/register", (req, res) => {
   let templateVars = { user };
   if (user) {
 
-    res.redirect("/urls")
+    res.redirect("/urls");
 
   } else {
 
@@ -165,7 +165,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     res.send("Please make sure you are logged in to delete a URL");
     return;
   }
-  if (!filteredURLs.hasOwnProperty(shortURL)) {
+  if (!Object.prototype.hasOwnProperty.call(filteredURLs, shortURL)) {
     //does not allow users to delete URLS they do not own. Users will only be able to reach this without logging in
     // if a request is sent outide of the browser.
     res.status(404).send("URL not found. Please make sure you have chosen an existing shortURL.");
@@ -198,12 +198,12 @@ app.post("/urls/:shortURL", (req, res) => {
     return;
   }
 
-  if (!filteredURLs.hasOwnProperty(shortURL) && urlDatabase.hasOwnProperty(shortURL)) {
+  if (!Object.prototype.hasOwnProperty.call(filteredURLs, shortURL) && Object.prototype.hasOwnProperty.call(urlDatabase, shortURL)) {
     //User is requesting to edit something they don't have access to:
     res.status(401).send("You do not have access to modify this url. Please make sure you are logged into the right account  ");
   }
 
-  if (!filteredURLs.hasOwnProperty(shortURL)) {
+  if (!Object.prototype.hasOwnProperty.call(filteredURLs, shortURL)) {
     //Makes sure that the user has that particular URL
     res.send("Please make sure you are editing your own shortURL (check that you are logged into the right account!)");
   }
@@ -329,7 +329,6 @@ app.get("/u/:shortURL", (req, res) => {
   if (obj) {
     longURL = obj.longURL;
   } else {
-    ``
     longURL = undefined;
   }
 
