@@ -32,9 +32,53 @@ app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
-app.post("/login", (req, res) => {
 
-  res.cookie("username", req.body.username); //Check this!
+app.get("/register", (req, res) => {
+
+  let userID = req.cookies["user_id"];
+  let user = findUserById(userID);
+  let templateVars = { user };
+
+  res.render("urls_createAccount", templateVars);
+});
+
+app.post("/register", (req, res) => {
+  let newUser = req.body.email;
+  let pswd = req.body.password;
+
+  if (!newUser || !pswd) {
+    res.status(400).send("Invalid e-mail and/or password");
+  }
+
+  if (alreadyRegistered(newUser)) {
+    res.status(400).send("E-mail already registered");
+  }
+  //Adds the new user
+  users[newUser] = {};
+  users[newUser].id = generateRandomString(); //Should really check if ID not used
+  users[newUser].email = newUser;
+  users[newUser].password = pswd; //Should hash this
+
+
+  res.cookie("user_id", users[newUser].id);
+  res.redirect("/urls");
+
+});
+
+app.post("/login", (req, res) => {
+  //Grab the user by the e-mail
+  let user = findUserByEmail(req.body.email);
+  let pswdAttempt = req.body.password;
+  if (!user || !pswdAttempt) {
+    res.status(400).send("Invalid e-mail and/or password");
+  }
+
+  if (!passwordCheck(user.password, pswdAttempt)) {
+    //Failed password:
+    res.status(400).send("Invalid e-mail and/or password");
+  }
+
+  res.cookie("user_id", user.id); //Logs the user in
   res.redirect("/urls");
 });
 
@@ -62,63 +106,33 @@ app.post("/urls/:shortURL", (req, res) => {
 
 
 app.get("/urls", (req, res) => {
-  let templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  let userID = req.cookies["user_id"];
+  let user = findUserById(userID);
+  let templateVars = { urls: urlDatabase, user };
+
   res.render("urls_index", templateVars);
 });
 
-app.get("/register", (req, res) => {
-  let templateVars = {
-    username: req.cookies["username"],
-    // ... any other vars
-  };
-  res.render("urls_createAccount", templateVars);
-});
-app.post("/register", (req, res) => {
-  let newUser = req.body.email;
-  let pswd = req.body.password;
-
-  if (!newUser || !pswd) {
-    res.status(400).send("Invalid e-mail and/or password");
-  }
-
-  if (alreadyRegistered(newUser)) {
-    res.status(400).send("E-mail already registered");
-  }
-
-
-  let templateVars = {
-    username: req.cookies["username"],
-    // ... any other vars
-  };
-
-  //Adds the new user
-  users[newUser] = {};
-  users[newUser].id = generateRandomString(); //Should really check if ID not used
-  users[newUser].email = newUser;
-  users[newUser].password = pswd; //Should hash this
-
-  console.log(users);//testing
-
-  res.cookie("user_id", users[newUser].id); //Check this!
-  res.redirect("/urls");
-
-});
 
 
 app.get("/urls/new", (req, res) => {
-  let templateVars = {
-    username: req.cookies["username"],
-  };
+  let userID = req.cookies["user_id"];
+  let user = findUserById(userID);
+  let templateVars = { user };
+
   res.render("urls_new", templateVars);
 });
 
 
 app.get("/urls/:shortURL", (req, res) => {
 
+  let userID = req.cookies["user_id"];
+  let user = findUserById(userID);
+
   let templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
-    username: req.cookies["username"],
+    user,
   }; //Must send as an object
 
   res.render("urls_show", templateVars); //don't need extension or path since /views is a standard
@@ -180,4 +194,36 @@ const alreadyRegistered = function(userName) {
     }
   }
   return false;
+
+}
+
+const findUserById = function(userID) {
+  if (!userID) {
+    return undefined;
+  }
+
+  for (let user in users) {
+    if (users[user].id === userID) {
+      return users[user];//return the entire user object
+    }
+  }
+
+  return undefined;
+}
+
+const findUserByEmail = function(email) {
+  if (!email) {
+    return undefined;
+  }
+
+  for (let user in users) {
+    if (users[user].email === email) {
+      return users[user];//return the entire user object
+    }
+  }
+  return undefined;
+}
+
+const passwordCheck = function(actual, guess) {
+  return actual === guess;
 }
