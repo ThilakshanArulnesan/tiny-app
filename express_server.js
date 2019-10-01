@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require(`body-parser`);
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all requests as strings, and saves it as "requests.body"
@@ -29,7 +30,8 @@ const users = {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  // res.send("Hello!");
+  res.redirect("/urls");
 });
 
 
@@ -46,6 +48,10 @@ app.post("/register", (req, res) => {
   let newUser = req.body.email;
   let pswd = req.body.password;
 
+
+  pswd = bcrypt.hashSync(pswd, 10); //generates a hash with 10 salt rounds
+
+
   if (!newUser || !pswd) { //Checks if the user has supplied a username/pswd combination
     res.status(400).send("Invalid e-mail and/or password");
     return;
@@ -61,7 +67,7 @@ app.post("/register", (req, res) => {
   users[newUser].email = newUser;
   users[newUser].password = pswd; //Should hash this
 
-
+  console.log(users);
   res.cookie("user_id", users[newUser].id);
   res.redirect("/urls");
 
@@ -303,8 +309,10 @@ const findUserByEmail = function(email) {
   return undefined;
 };
 
-const passwordCheck = function(actual, guess) {
-  return actual === guess;
+const passwordCheck = function(encrypted, guess) {
+
+  return bcrypt.compareSync(guess, encrypted); // returns true
+
 };
 
 const urlsForUser = function(id) {
