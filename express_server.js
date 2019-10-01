@@ -5,7 +5,7 @@ const bodyParser = require(`body-parser`);
 //const cookieParser = require('cookie-parser'); //No longer required
 const bcrypt = require('bcrypt');
 var cookieSession = require('cookie-session')
-const { getUserByEmail } = require('./helpers');
+const { getUserByEmail, generateRandomString, alreadyRegistered, urlsForUser, passwordCheck, findUserById } = require('./helpers');
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all requests as strings, and saves it as "requests.body"
@@ -51,7 +51,7 @@ const users = {
 app.get("/", (req, res) => {
   //If logged in:
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
   if (user && userID) {
     res.redirect("/urls");
   } else {
@@ -63,7 +63,7 @@ app.get("/", (req, res) => {
 app.get("/register", (req, res) => {
 
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
   let templateVars = { user };
   if (user) {
 
@@ -86,7 +86,7 @@ app.post("/register", (req, res) => {
 
   pswd = bcrypt.hashSync(pswd, 10); //generates a hash with 10 salt rounds
 
-  if (alreadyRegistered(newUser)) { //Checks if the user already has created an account
+  if (alreadyRegistered(newUser, users)) { //Checks if the user already has created an account
     res.status(400).send("E-mail already registered");
     return;
   }
@@ -106,7 +106,7 @@ app.post("/register", (req, res) => {
 app.get("/login", (req, res) => {
 
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
   let templateVars = { user };
 
   if (user) {
@@ -156,9 +156,9 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   let shortURL = req.params.shortURL;
   //Check if the user is allowed to post
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
 
-  let filteredURLs = urlsForUser(userID);
+  let filteredURLs = urlsForUser(userID, urlDatabase);
 
   if (!userID || !user) {
     //Only allows users who have signed in to make changes.
@@ -183,14 +183,14 @@ app.post("/urls/:shortURL", (req, res) => {
   let shortURL = req.params.shortURL;
   //Check if the user is allowed to post
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
 
 
   let date = new Date(); //Stores creation date
   let numVisits = 0; //Stores how many times visited
   let visitedBy = []; //Stores ids of users who use the link
 
-  let filteredURLs = urlsForUser(userID);
+  let filteredURLs = urlsForUser(userID, urlDatabase);
 
   if (!userID || !user) {
     //Checks to make sure user is logged in
@@ -222,7 +222,7 @@ app.post("/urls/:shortURL", (req, res) => {
 
 app.get("/urls", (req, res) => {
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
 
   if (!userID || !user) {
     let templateVars = { urls: {}, user };
@@ -231,7 +231,7 @@ app.get("/urls", (req, res) => {
   }
 
 
-  let filteredURLs = urlsForUser(userID);
+  let filteredURLs = urlsForUser(userID, urlDatabase);
   let templateVars = { urls: filteredURLs, user };
 
   res.render("urls_index", templateVars);
@@ -241,7 +241,7 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   let userID = req.session.user_id;
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
   if (!userID || !user) {
     res.redirect("/login");
     return;
@@ -259,12 +259,12 @@ app.get("/urls/:shortURL", (req, res) => {
 
 
 
-  let user = findUserById(userID);
+  let user = findUserById(userID, users);
 
   if (!user) {
     res.send(`<h1 style="color:red">Please login to access the url editor </p>`);
   }
-  let filteredURLs = urlsForUser(userID);
+  let filteredURLs = urlsForUser(userID, urlDatabase);
 
   let templateVars = {};
   if (filteredURLs && filteredURLs[req.params.shortURL]) { //If url exists
@@ -351,66 +351,3 @@ app.listen(PORT, () => {
   console.log(`Tiny app listening on port ${PORT}!`);
 });
 
-const generateRandomString = function(numGenerate = 6) {
-  //Generate a string of 6 alpha-numeric characters
-  let characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let retString = "";
-  for (let i = 0; i < numGenerate; i++) {
-    let rng = Math.floor(Math.random() * 62);
-    retString += characters[rng];
-  }
-
-  console.log(`The random coded is : ${retString}`);
-  return retString;
-};
-
-const alreadyRegistered = function(userName) {
-  //Checks if user is already registered
-  for (let user in users) {
-    if (user === userName) {
-      return true;
-    }
-  }
-  return false;
-};
-
-const findUserById = function(userID) {
-  if (!userID) {
-    return undefined;
-  }
-
-  for (let user in users) {
-    if (users[user].id === userID) {
-      return users[user];//return the entire user object
-    }
-  }
-
-  return undefined;
-};
-
-const passwordCheck = function(encrypted, guess) {
-  return bcrypt.compareSync(guess, encrypted); // returns true
-};
-
-const urlsForUser = function(id) {
-  //Given a user will find all urls that match for that user:
-  let retObj = {};
-  for (let shortURL in urlDatabase) {
-    if (urlDatabase[shortURL].userID === id) { //Only adds urls associated with the given user.
-      retObj[shortURL] = urlDatabase[shortURL];
-    }
-  }
-  return retObj;
-}
-/*
-const isLoggedIn = function(id) {
-  if (id === undefined) {
-    return false;
-  }
-  if (findUserById(id)) {
-    return true;
-  }
-  return false;
-}
-
-*/
