@@ -2,12 +2,18 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require(`body-parser`);
-const cookieParser = require('cookie-parser');
+//const cookieParser = require('cookie-parser'); //No longer required
 const bcrypt = require('bcrypt');
+var cookieSession = require('cookie-session')
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all requests as strings, and saves it as "requests.body"
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ["kdoxk!012x", "adkekKey1"],
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 
 
 
@@ -37,7 +43,7 @@ app.get("/", (req, res) => {
 
 app.get("/register", (req, res) => {
 
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
   let templateVars = { user };
 
@@ -48,14 +54,12 @@ app.post("/register", (req, res) => {
   let newUser = req.body.email;
   let pswd = req.body.password;
 
-
-  pswd = bcrypt.hashSync(pswd, 10); //generates a hash with 10 salt rounds
-
-
   if (!newUser || !pswd) { //Checks if the user has supplied a username/pswd combination
     res.status(400).send("Invalid e-mail and/or password");
     return;
   }
+
+  pswd = bcrypt.hashSync(pswd, 10); //generates a hash with 10 salt rounds
 
   if (alreadyRegistered(newUser)) { //Checks if the user already has created an account
     res.status(400).send("E-mail already registered");
@@ -65,17 +69,18 @@ app.post("/register", (req, res) => {
   users[newUser] = {};
   users[newUser].id = generateRandomString(); //Should really check if ID not used
   users[newUser].email = newUser;
-  users[newUser].password = pswd; //Should hash this
+  users[newUser].password = pswd;
 
-  console.log(users);
-  res.cookie("user_id", users[newUser].id);
+
+  //res.cookie("user_id", users[newUser].id);
+  req.session.user_id = users[newUser].id;
   res.redirect("/urls");
 
 });
 
 app.get("/login", (req, res) => {
 
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
   let templateVars = { user };
 
@@ -105,12 +110,13 @@ app.post("/login", (req, res) => {
     return;
   }
 
-  res.cookie("user_id", user.id); //Logs the user in
+  //res.cookie("user_id", user.id); //Logs the user in
+  req.session.user_id = user.id;
   res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/urls");
 });
 
@@ -121,7 +127,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   console.log("Trying to delete");
   let shortURL = req.params.shortURL;
   //Check if the user is allowed to post
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
 
   let filteredURLs = urlsForUser(userID);
@@ -143,7 +149,7 @@ app.post("/urls/:shortURL", (req, res) => {
   let newURL = req.body.longURL;
   let shortURL = req.params.shortURL;
   //Check if the user is allowed to post
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
 
   let filteredURLs = urlsForUser(userID);
@@ -159,7 +165,7 @@ app.post("/urls/:shortURL", (req, res) => {
 
 
 app.get("/urls", (req, res) => {
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
 
   if (!userID || !user) {
@@ -178,7 +184,7 @@ app.get("/urls", (req, res) => {
 
 
 app.get("/urls/new", (req, res) => {
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
   if (!userID || !user) {
     res.redirect("/login");
@@ -193,7 +199,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
 
-  let userID = req.cookies["user_id"];
+  let userID = req.session.user_id;
   let user = findUserById(userID);
   let filteredURLs = urlsForUser(userID);
   let templateVars = {};
@@ -230,7 +236,7 @@ app.post("/urls", (req, res) => {
   let shortenedURL = generateRandomString(); //
   urlDatabase[shortenedURL] = {
     longURL: req.body.longURL,
-    userID: req.cookies["user_id"]
+    userID: req.session.user_id
   }
   res.redirect(302, `/urls/${shortenedURL}`);
 
