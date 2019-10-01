@@ -221,15 +221,15 @@ app.post("/urls/:shortURL", (req, res) => {
 
 
 app.get("/urls", (req, res) => {
+  //Displays an index page of all the urls
   let userID = req.session.user_id;
   let user = findUserById(userID, users);
 
-  if (!userID || !user) {
+  if (!userID || !user) { //URL doesn't exist
     let templateVars = { urls: {}, user };
     res.render("urls_index", templateVars);
     return;
   }
-
 
   let filteredURLs = urlsForUser(userID, urlDatabase);
   let templateVars = { urls: filteredURLs, user };
@@ -237,12 +237,12 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-
-
 app.get("/urls/new", (req, res) => {
+  //Loads a page to create a new url
+
   let userID = req.session.user_id;
   let user = findUserById(userID, users);
-  if (!userID || !user) {
+  if (!userID || !user) { //Redirect to login page if user isn't logged in
     res.redirect("/login");
     return;
   }
@@ -254,11 +254,9 @@ app.get("/urls/new", (req, res) => {
 
 
 app.get("/urls/:shortURL", (req, res) => {
+  //Pulls the shorturl for editing.
 
   let userID = req.session.user_id;
-
-
-
   let user = findUserById(userID, users);
 
   if (!user) {
@@ -278,24 +276,21 @@ app.get("/urls/:shortURL", (req, res) => {
     };//Must send as an object
 
   } else {
-    templateVars = {
+    templateVars = { //if it doesn't exist these parameters will display an error message that has a banner to login.
       shortURL: req.params.shortURL,
       longURL: undefined,
       user
     };
   }
 
-
-
   res.render("urls_show", templateVars); //don't need extension or path since /views is a standard
-
 });
 
 
 
 
 app.get("/urls.json", (req, res) => {
-  //displays all urls as a JSON
+  //displays all urls as a JSON.
   res.json(urlDatabase);
 });
 
@@ -319,10 +314,9 @@ app.post("/urls", (req, res) => {
 
 app.get("/u/:shortURL", (req, res) => {
   //Redirects to long url
-  let longURL;
 
+  let longURL;
   let userID = req.session.user_id;
-  console.log("visited by ", userID);
   const obj = urlDatabase[req.params.shortURL];
 
 

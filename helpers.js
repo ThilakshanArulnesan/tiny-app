@@ -24,7 +24,6 @@ const generateRandomString = function(numGenerate = 6) {
     retString += characters[rng];
   }
 
-  console.log(`The random coded is : ${retString}`);
   return retString;
 };
 
@@ -55,12 +54,14 @@ const urlsForUser = function(id, urlDatabase) {
 
 
 const passwordCheck = function(encrypted, guess) {
+  //checks if password is correct. Compares hash of the guess to the encrypted password stored on the server
   return bcrypt.compareSync(guess, encrypted); // returns true
 };
 
 
 
 const findUserById = function(userID, users) {
+  //Returns a user given an ID
   if (!userID) {
     return undefined;
   }
