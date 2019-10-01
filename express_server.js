@@ -15,6 +15,19 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur"
+  },
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk"
+  }
+}
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -44,12 +57,6 @@ app.post("/urls/:shortURL", (req, res) => {
 
   let newURL = req.body.longURL;
   urlDatabase[req.params.shortURL] = newURL; //Replaces the site
-
-  let templateVars = {
-    username: req.cookies["username"],
-    // ... any other vars
-  };
-
   res.redirect("/urls");
 });
 
@@ -59,15 +66,52 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+app.get("/register", (req, res) => {
+  let templateVars = {
+    username: req.cookies["username"],
+    // ... any other vars
+  };
+  res.render("urls_createAccount", templateVars);
+});
+app.post("/register", (req, res) => {
+  let newUser = req.body.email;
+  let pswd = req.body.password;
+
+  if (!newUser || !pswd) {
+    res.status(400).send("Invalid e-mail and/or password");
+  }
+
+  if (alreadyRegistered(newUser)) {
+    res.status(400).send("E-mail already registered");
+  }
+
+
+  let templateVars = {
+    username: req.cookies["username"],
+    // ... any other vars
+  };
+
+  //Adds the new user
+  users[newUser] = {};
+  users[newUser].id = generateRandomString(); //Should really check if ID not used
+  users[newUser].email = newUser;
+  users[newUser].password = pswd; //Should hash this
+
+  console.log(users);//testing
+
+  res.cookie("user_id", users[newUser].id); //Check this!
+  res.redirect("/urls");
+
+});
 
 
 app.get("/urls/new", (req, res) => {
   let templateVars = {
     username: req.cookies["username"],
-    // ... any other vars
   };
   res.render("urls_new", templateVars);
 });
+
 
 app.get("/urls/:shortURL", (req, res) => {
 
@@ -76,8 +120,6 @@ app.get("/urls/:shortURL", (req, res) => {
     longURL: urlDatabase[req.params.shortURL],
     username: req.cookies["username"],
   }; //Must send as an object
-  console.log(req.params.shortURL);
-  console.log(urlDatabase[req.params.shortURL]);
 
   res.render("urls_show", templateVars); //don't need extension or path since /views is a standard
 
@@ -87,19 +129,14 @@ app.get("/urls/:shortURL", (req, res) => {
 
 
 app.get("/urls.json", (req, res) => {
+  //displays all urls as a JSON
   res.json(302, `/urls/${shortenedURL}`);
 });
 
 app.post("/urls", (req, res) => {
-  let shortenedURL = generateRandomString();
-  urlDatabase[shortenedURL] = req.body.longURL;
+  let shortenedURL = generateRandomString(); //
+  urlDatabase[shortenedURL] = req.body.longURL; //maps shortLink to long link
 
-  let templateVars = {
-    username: req.cookies["username"],
-    // ... any other vars
-  };
-
-  console.log(urlDatabase);
   res.redirect(302, `/urls/${shortenedURL}`);
 
 });
@@ -131,6 +168,16 @@ const generateRandomString = function(numGenerate = 6) {
     retString += characters[rng];
   }
 
-  console.log(`The random conde is : ${retString}`);
+  console.log(`The random coded is : ${retString}`);
   return retString;
 };
+
+const alreadyRegistered = function(userName) {
+  //Checks if user is already registered
+  for (let user in users) {
+    if (user === userName) {
+      return true;
+    }
+  }
+  return false;
+}
