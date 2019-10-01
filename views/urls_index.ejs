@@ -30,6 +30,11 @@
           <th scope="col">Delete</th>
         </tr>
       </thead>
+      <%if(!user){ %>
+      <h4 style="color:red">
+        Please login or register first to view your URLS.
+      </h4>
+      <% } %>
       <tbody>
         <% for(let url in urls) { %>
         <tr>
