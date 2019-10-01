@@ -5,6 +5,7 @@ const bodyParser = require(`body-parser`);
 //const cookieParser = require('cookie-parser'); //No longer required
 const bcrypt = require('bcrypt');
 var cookieSession = require('cookie-session')
+const { getUserByEmail } = require('./helpers');
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all requests as strings, and saves it as "requests.body"
@@ -18,8 +19,20 @@ app.use(cookieSession({
 
 
 const urlDatabase = {
-  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+    date: new Date(),
+    numVisits: 0,
+    visitedBy: [] //Array of unique user ids
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+    date: new Date(),
+    numVisits: 0,
+    visitedBy: [] //Array of unique user ids
+  }
 };
 
 const users = {
@@ -36,8 +49,14 @@ const users = {
 };
 
 app.get("/", (req, res) => {
-  // res.send("Hello!");
-  res.redirect("/urls");
+  //If logged in:
+  let userID = req.session.user_id;
+  let user = findUserById(userID);
+  if (user && userID) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 
@@ -46,8 +65,14 @@ app.get("/register", (req, res) => {
   let userID = req.session.user_id;
   let user = findUserById(userID);
   let templateVars = { user };
+  if (user) {
 
-  res.render("urls_createAccount", templateVars);
+    res.redirect("/urls")
+
+  } else {
+
+    res.render("urls_createAccount", templateVars);
+  }
 });
 
 app.post("/register", (req, res) => {
@@ -84,7 +109,11 @@ app.get("/login", (req, res) => {
   let user = findUserById(userID);
   let templateVars = { user };
 
-  res.render("urls_login", templateVars);
+  if (user) {
+    res.redirect("/urls");
+  } else {
+    res.render("urls_login", templateVars);
+  }
 });
 
 app.post("/login", (req, res) => {
@@ -92,7 +121,7 @@ app.post("/login", (req, res) => {
   // Note the requirements called for two different messages for e-mail not found and incorrect password
   // But it would be better for security if users got the same message whether the user existed or not
   // and the message should not indicate whether it was the password or the username that failed.
-  let user = findUserByEmail(req.body.email);
+  let user = getUserByEmail(req.body.email, users);
   if (!user) {
     res.status(401).send("User not found.");
     return;
@@ -124,7 +153,6 @@ app.post("/logout", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => {
   //Deletes a url from from the list. Done on a POST request (not ideal)
   //Delete the shortURL entry from the database
-  console.log("Trying to delete");
   let shortURL = req.params.shortURL;
   //Check if the user is allowed to post
   let userID = req.session.user_id;
@@ -132,10 +160,15 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
   let filteredURLs = urlsForUser(userID);
 
-  if (!userID || !user || !filteredURLs.hasOwnProperty(shortURL)) {
+  if (!userID || !user) {
+    //Only allows users who have signed in to make changes.
+    res.send("Please make sure you are logged in to delete a URL");
+    return;
+  }
+  if (!filteredURLs.hasOwnProperty(shortURL)) {
     //does not allow users to delete URLS they do not own. Users will only be able to reach this without logging in
     // if a request is sent outide of the browser.
-    res.send("Please make sure you are logged in to delete a URL");
+    res.status(404).send("URL not found. Please make sure you have chosen an existing shortURL.");
     return;
   }
 
@@ -152,14 +185,37 @@ app.post("/urls/:shortURL", (req, res) => {
   let userID = req.session.user_id;
   let user = findUserById(userID);
 
+
+  let date = new Date(); //Stores creation date
+  let numVisits = 0; //Stores how many times visited
+  let visitedBy = []; //Stores ids of users who use the link
+
   let filteredURLs = urlsForUser(userID);
 
-  if (!userID || !user || !filteredURLs.hasOwnProperty(shortURL)) {
+  if (!userID || !user) {
+    //Checks to make sure user is logged in
     res.send("Please make sure you are logged in to submit a new url");
     return;
   }
 
-  urlDatabase[shortURL] = { longURL: newURL, userID }; //Replaces the site
+  if (!filteredURLs.hasOwnProperty(shortURL) && urlDatabase.hasOwnProperty(shortURL)) {
+    //User is requesting to edit something they don't have access to:
+    res.status(401).send("You do not have access to modify this url. Please make sure you are logged into the right account  ");
+  }
+
+  if (!filteredURLs.hasOwnProperty(shortURL)) {
+    //Makes sure that the user has that particular URL
+    res.send("Please make sure you are editing your own shortURL (check that you are logged into the right account!)");
+  }
+  //Assumption: We are going to reset the statistics and the date on edits
+  urlDatabase[shortURL] = {
+    longURL: newURL,
+    userID,
+    date,
+    numVisits,
+    visitedBy
+  };
+
   res.redirect("/urls");
 });
 
@@ -200,21 +256,32 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
 
   let userID = req.session.user_id;
+
+
+
   let user = findUserById(userID);
+
+  if (!user) {
+    res.send(`<h1 style="color:red">Please login to access the url editor </p>`);
+  }
   let filteredURLs = urlsForUser(userID);
+
   let templateVars = {};
   if (filteredURLs && filteredURLs[req.params.shortURL]) { //If url exists
     templateVars = {
       shortURL: req.params.shortURL,
-      longURL: filteredURLs[req.params.shortURL],
-      user,
+      longURL: filteredURLs[req.params.shortURL].longURL,
+      date: filteredURLs[req.params.shortURL].date,
+      numVisits: filteredURLs[req.params.shortURL].numVisits,
+      visitedBy: filteredURLs[req.params.shortURL].visitedBy,
+      user
     };//Must send as an object
 
   } else {
     templateVars = {
       shortURL: req.params.shortURL,
       longURL: undefined,
-      user,
+      user
     };
   }
 
@@ -233,11 +300,19 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  let shortenedURL = generateRandomString(); //
+  //Creates a shortened url
+  let shortenedURL = generateRandomString();
+  let date = new Date();
+  let numVisits = 0;
+  let visitedBy = [];
+
   urlDatabase[shortenedURL] = {
     longURL: req.body.longURL,
-    userID: req.session.user_id
-  }
+    userID: req.session.user_id,
+    date,
+    numVisits,
+    visitedBy
+  };
   res.redirect(302, `/urls/${shortenedURL}`);
 
 });
@@ -246,19 +321,30 @@ app.get("/u/:shortURL", (req, res) => {
   //Redirects to long url
   let longURL;
 
+  let userID = req.session.user_id;
+  console.log("visited by ", userID);
   const obj = urlDatabase[req.params.shortURL];
+
+
   if (obj) {
     longURL = obj.longURL;
   } else {
+    ``
     longURL = undefined;
   }
 
   if (longURL !== undefined) {
+    obj.numVisits++; //Increment number of visits as we are about to redirect the user.
+
+    if (!obj.visitedBy.includes(userID)) {
+      obj.visitedBy.push(userID);//adds users who have visited the link (unique users only)
+    }
+
     res.redirect(longURL);
     return;
   }
 
-  res.send("URL NOT FOUND");
+  res.status(404).send("Url not found. Please check that you have properly copied the link.");
 });
 
 app.listen(PORT, () => {
@@ -302,23 +388,8 @@ const findUserById = function(userID) {
   return undefined;
 };
 
-const findUserByEmail = function(email) {
-  if (!email) {
-    return undefined;
-  }
-
-  for (let user in users) {
-    if (users[user].email === email) {
-      return users[user];//return the entire user object
-    }
-  }
-  return undefined;
-};
-
 const passwordCheck = function(encrypted, guess) {
-
   return bcrypt.compareSync(guess, encrypted); // returns true
-
 };
 
 const urlsForUser = function(id) {
@@ -326,7 +397,7 @@ const urlsForUser = function(id) {
   let retObj = {};
   for (let shortURL in urlDatabase) {
     if (urlDatabase[shortURL].userID === id) { //Only adds urls associated with the given user.
-      retObj[shortURL] = urlDatabase[shortURL].longURL;
+      retObj[shortURL] = urlDatabase[shortURL];
     }
   }
   return retObj;

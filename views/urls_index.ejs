@@ -20,26 +20,34 @@
 
 <body>
   <main style="margin: 1em;">
+    <%if(!user){ %>
+    <h4 style="color:red">
+      Please login or register first to view your URLS.
+    </h4>
+    <% }else{ %>
     <h3>My URLs</h3>
     <table class="table">
       <thead>
         <tr>
           <th scope="col">Short URL</th>
           <th scope="col">Long URL</th>
+          <th scope="col">Creation/edit date</th>
+          <th scope="col">Number of visits</th>
+          <th scope="col">Number of unique users</th>
+
           <th scope="col">Edit</th>
           <th scope="col">Delete</th>
         </tr>
       </thead>
-      <%if(!user){ %>
-      <h4 style="color:red">
-        Please login or register first to view your URLS.
-      </h4>
-      <% } %>
+
       <tbody>
         <% for(let url in urls) { %>
         <tr>
           <td><%= url %></td>
-          <td><%= urls[url] %></td>
+          <td><%= urls[url].longURL %></td>
+          <td><%= urls[url].date.toLocaleString() %></td>
+          <td><%= urls[url].numVisits %></td>
+          <td><%= urls[url].visitedBy.length %></td>
           <td>
 
             <form action=<%= `/urls/${url}` %> method="GET">
@@ -58,7 +66,14 @@
         </tr>
         <% } %>
       </tbody>
+
     </table>
+
+    <!-- (Minor) a link to "Create a New Short Link" which makes a GET request to /urls/new
+-->
+
+    Click <a href="/urls/new">here </a> to create a new short link.
+    <% } %>
   </main>
 
   <!-- Bootstrap JS -->
