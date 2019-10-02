@@ -58,7 +58,7 @@
           </td>
           <td>
 
-            <form action=<%= `/urls/${url}/delete` %> method="POST">
+            <form action=<%= `/urls/${url}/delete?_method=DELETE` %> method="POST">
               <button type="submit" class="btn btn-outline-danger">
                 Delete</button>
             </form>

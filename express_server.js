@@ -4,8 +4,10 @@ const PORT = 8080; // default port 8080
 const bodyParser = require(`body-parser`);
 //const cookieParser = require('cookie-parser'); //No longer required
 const bcrypt = require('bcrypt');
+var methodOverride = require('method-override');
 const cookieSession = require('cookie-session');
 const { getUserByEmail, generateRandomString, alreadyRegistered, urlsForUser, passwordCheck, findUserById } = require('./helpers');
+
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all requests as strings, and saves it as "requests.body"
@@ -15,6 +17,8 @@ app.use(cookieSession({
   // Cookie Options
   maxAge: 24 * 60 * 60 * 1000 // 24 hours
 }));
+app.use(methodOverride('_method')); //Allows for put requests
+
 
 
 
@@ -150,7 +154,7 @@ app.post("/logout", (req, res) => {
 });
 
 
-app.post("/urls/:shortURL/delete", (req, res) => {
+app.delete("/urls/:shortURL/delete", (req, res) => {
   //Deletes a url from from the list. Done on a POST request (not ideal)
   //Delete the shortURL entry from the database
   let shortURL = req.params.shortURL;
@@ -176,7 +180,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-app.post("/urls/:shortURL", (req, res) => {
+app.put("/urls/:shortURL", (req, res) => {
   //Renames a url
 
   let newURL = req.body.longURL;
