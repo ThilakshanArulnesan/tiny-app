@@ -31,7 +31,7 @@
 
 
     <% }else{ %>
-    <form class="form-inline" action="/logout" method="POST">
+    <form class="form-inline" action="/logout?_method=DELETE" method="POST">
       <div class=" form-group mb-2">
         <label style="margin: 1em;color:white">
           <%= `Logged in as ${user.email}! ` %>

@@ -14,8 +14,6 @@ app.use(bodyParser.urlencoded({ extended: true }));//Parases the body of all req
 app.use(cookieSession({
   name: 'session',
   keys: ["kdoxk!012x", "adkekKey1"],
-  // Cookie Options
-  maxAge: 24 * 60 * 60 * 1000 // 24 hours
 }));
 app.use(methodOverride('_method')); //Allows for put requests
 
@@ -148,8 +146,8 @@ app.post("/login", (req, res) => {
   res.redirect("/urls");
 });
 
-app.post("/logout", (req, res) => {
-  req.session = null;
+app.delete("/logout", (req, res) => {//a delete because we are ending the session
+  req.session = null; //
   res.redirect("/urls");
 });
 
@@ -265,6 +263,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
   if (!user) {
     res.send(`<h1 style="color:red">Please login to access the url editor </p>`);
+    return;
   }
   let filteredURLs = urlsForUser(userID, urlDatabase);
 
@@ -294,7 +293,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
 
 app.get("/urls.json", (req, res) => {
-  //displays all urls as a JSON.
+  //displays all urls as a JSON
   res.json(urlDatabase);
 });
 
